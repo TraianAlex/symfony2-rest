@@ -26,7 +26,8 @@
         "incenteev/composer-parameter-handler": "~2.0",
         "hautelook/alice-bundle": "0.2.*",
         "guzzlehttp/ringphp": "^1.1",
-        "guzzlehttp/guzzle": "^5.3"
+        "guzzlehttp/guzzle": "^5.3",
+        "jms/serializer-bundle": "^2.4"
     },
     "require-dev": {
         "sensio/generator-bundle": "~2.3",
