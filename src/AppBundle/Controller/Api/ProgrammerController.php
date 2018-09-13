@@ -2,6 +2,8 @@
 
 namespace AppBundle\Controller\Api;
 
+use AppBundle\Api\ApiProblem;
+use AppBundle\Api\ApiProblemException;
 use AppBundle\Form\UpdateProgrammerType;
 use AppBundle\Controller\BaseController;
 use AppBundle\Entity\Programmer;
@@ -10,9 +12,11 @@ use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Method;
 use Symfony\Component\Form\Form;
+use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class ProgrammerController extends BaseController
 {
@@ -22,12 +26,14 @@ class ProgrammerController extends BaseController
      */
     public function newAction(Request $request)
     {
-        //$data = json_decode($request->getContent(), true);
-        //$programmer = new Programmer($data['nickname'], $data['avatarNumber']);
         $programmer = new Programmer();
         $form = $this->createForm(new ProgrammerType(), $programmer);
         $this->processForm($request, $form);
-        //$programmer->setTagLine($data['tagLine']);
+        if ($form->isSubmitted() && !$form->isValid()) {
+            //header('Content-Type: cli');
+            //dump((string) $form->getErrors(true, false));die;
+            $this->throwApiProblemValidationException($form);
+        }
         $programmer->setUser($this->findUserByUsername('weaverryan'));
 
         $em = $this->getDoctrine()->getManager();
@@ -96,6 +102,9 @@ class ProgrammerController extends BaseController
 
         $form = $this->createForm(new UpdateProgrammerType(), $programmer);
         $this->processForm($request, $form);
+        if ($form->isSubmitted() && !$form->isValid()) {
+            $this->throwApiProblemValidationException($form);
+        }
         $em = $this->getDoctrine()->getManager();
         $em->persist($programmer);
         $em->flush();
@@ -128,7 +137,45 @@ class ProgrammerController extends BaseController
     private function processForm(Request $request, Form $form)
     {
         $data = json_decode($request->getContent(), true);
+        if ($data === null) {
+            $apiProblem = new ApiProblem(400, ApiProblem::TYPE_INVALID_REQUEST_BODY_FORMAT);
+            //throw new HttpException(400, 'Invalid JSON body!');
+            throw new ApiProblemException($apiProblem);
+        }
         $clearMissing = $request->getMethod() != 'PATCH';
         $form->submit($data, $clearMissing);
+    }
+
+    private function getErrorsFromForm(FormInterface $form)
+    {
+        $errors = array();
+        foreach ($form->getErrors() as $error) {
+            $errors[] = $error->getMessage();
+        }
+        foreach ($form->all() as $childForm) {
+            if ($childForm instanceof FormInterface) {
+                if ($childErrors = $this->getErrorsFromForm($childForm)) {
+                    $errors[$childForm->getName()] = $childErrors;
+                }
+            }
+        }
+        return $errors;
+    }
+
+    private function throwApiProblemValidationException(FormInterface $form)
+    {
+        $errors = $this->getErrorsFromForm($form);
+
+        $apiProblem = new ApiProblem(
+            400,
+            ApiProblem::TYPE_VALIDATION_ERROR
+        );
+        $apiProblem->set('errors', $errors);
+
+        //return new JsonResponse($data, 400);
+//        $response = new JsonResponse($apiProblem->toArray(), $apiProblem->getStatusCode());
+//        $response->headers->set('Content-Type', 'application/problem+json');
+//        return $response;
+        throw new ApiProblemException($apiProblem);
     }
 }

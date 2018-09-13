@@ -40,6 +40,7 @@ class ProgrammerControllerTest extends ApiTestCase
             'avatarNumber' => 3,
         ));
         $response = $this->client->get('/api/programmers/UnitTester');
+
         $this->assertEquals(200, $response->getStatusCode());
 //        $data = $response->json();
 //        $this->assertEquals(array(
@@ -91,7 +92,6 @@ class ProgrammerControllerTest extends ApiTestCase
         $response = $this->client->put('/api/programmers/CowboyCoder', [
             'body' => json_encode($data)
         ]);
-
         $this->assertEquals(200, $response->getStatusCode());
         $this->asserter()->assertResponsePropertyEquals($response, 'avatarNumber', 2);
         $this->asserter()->assertResponsePropertyEquals($response, 'nickname', 'CowboyCoder');
@@ -123,5 +123,54 @@ class ProgrammerControllerTest extends ApiTestCase
         $this->assertEquals(200, $response->getStatusCode());
         $this->asserter()->assertResponsePropertyEquals($response, 'avatarNumber', 5);
         $this->asserter()->assertResponsePropertyEquals($response, 'tagLine', 'bar');
+    }
+
+    public function testValidationErrors()
+    {
+        $data = array(
+            'avatarNumber' => 2,
+            'tagLine' => 'I\'m from a test!'
+        );
+        $response = $this->client->post('/api/programmers', [
+            'body' => json_encode($data)
+        ]);
+        $this->assertEquals(400, $response->getStatusCode());
+        $this->asserter()->assertResponsePropertiesExist($response, array(
+            'type',
+            'title',
+            'errors',
+        ));
+        $this->asserter()->assertResponsePropertyExists($response, 'errors.nickname');
+        $this->asserter()->assertResponsePropertyEquals($response, 'errors.nickname[0]', 'Please enter a clever nickname');
+        $this->asserter()->assertResponsePropertyDoesNotExist($response, 'errors.avatarNumber');
+        $this->assertEquals('application/problem+json', $response->getHeader('Content-Type'));
+    }
+
+    public function testInvalidJson()
+    {
+        $invalidBody = <<<EOF
+{
+    "nickname": "JohnnyRobot",
+    "avatarNumber" : "2
+    "tagLine": "I'm from a test!"
+}
+EOF;
+        $response = $this->client->post('/api/programmers', [
+            'body' => $invalidBody
+        ]);
+        //$this->debugResponse($response);
+        $this->assertEquals(400, $response->getStatusCode());
+        $this->asserter()->assertResponsePropertyContains($response, 'type', 'invalid_body_format');
+    }
+
+    public function test404Exception()
+    {
+        $response = $this->client->get('/api/programmers/fake');
+
+        $this->assertEquals(404, $response->getStatusCode());
+        $this->assertEquals('application/problem+json', $response->getHeader('Content-Type'));
+        $this->asserter()->assertResponsePropertyEquals($response, 'type', 'about:blank');
+        $this->asserter()->assertResponsePropertyEquals($response, 'title', 'Not Found');
+        $this->asserter()->assertResponsePropertyEquals($response, 'detail', 'No programmer found with nickname "fake"');
     }
 }
