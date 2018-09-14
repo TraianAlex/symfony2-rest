@@ -277,4 +277,17 @@ class ApiTestCase extends KernelTestCase
         }
         return $this->responseAsserter;
     }
+
+    /**
+     * Call this when you want to compare URLs in a test
+     *
+     * (since the returned URL's will have /app_test.php in front)
+     *
+     * @param string $uri
+     * @return string
+     */
+    protected function adjustUri($uri)
+    {
+        return '/app_test.php'.$uri;
+    }
 }
