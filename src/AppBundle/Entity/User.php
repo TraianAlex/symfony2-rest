@@ -4,8 +4,10 @@ namespace AppBundle\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\UserInterface;
+use JMS\Serializer\Annotation as Serializer;
 
 /**
+ * @Serializer\ExclusionPolicy("all")
  * @ORM\Table(name="battle_user")
  * @ORM\Entity(repositoryClass="AppBundle\Repository\UserRepository")
  */
@@ -19,6 +21,7 @@ class User implements UserInterface
     private $id;
 
     /**
+     * @Serializer\Expose()
      * @ORM\Column(type="string", unique=true)
      */
     private $username;

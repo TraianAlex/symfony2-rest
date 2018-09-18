@@ -56,8 +56,22 @@ class ProgrammerControllerTest extends ApiTestCase
             'tagLine'
         ));
         $this->asserter()->assertResponsePropertyEquals($response, 'nickname', 'UnitTester');
-        $this->asserter()->assertResponsePropertyEquals($response, 'uri', $this->adjustUri('/api/programmers/UnitTester'));
+        $this->asserter()->assertResponsePropertyEquals($response,
+            '_links.self',
+            $this->adjustUri('/api/programmers/UnitTester')
+        );
         //$this->debugResponse($response);
+    }
+
+    public function testGETProgrammerDeep()
+    {
+        $this->createProgrammer(array(
+            'nickname' => 'UnitTester',
+            'avatarNumber' => 3,
+        ));
+        $response = $this->client->get('/api/programmers/UnitTester?deep=1');
+        $this->assertEquals(200, $response->getStatusCode());
+        $this->asserter()->assertResponsePropertiesExist($response, array('user.username'));
     }
 
     public function testGETProgrammersCollection()
